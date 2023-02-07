@@ -36,9 +36,9 @@ fork1(void)
 
 //create a pipe
 void 
-pipe1(int fd[2])
+pipe1(int pipe_1[2])
 {
- int rc = pipe(fd);
+ int rc = pipe(pipe_1);
  if(rc<0){
    panic("Fail to create a pipe.");
  }
@@ -47,11 +47,11 @@ pipe1(int fd[2])
 
 //pull everything from pipe and return the size of the content
 int
-read1(int *fd)
+read1(int *pipe_1)
 {
  char ch='a';
- write(fd[1],&ch,1); //write something to the pipe so the next read will not block (because read operation is a blocking operation - if the pipe is empty, read will wait till something is put in)
- int len = read(fd[0],buf,MAX_BUF_SIZE)-1;
+ write(pipe_1[1],&ch,1); //write something to the pipe so the next read will not block (because read operation is a blocking operation - if the pipe is empty, read will wait till something is put in)
+ int len = read(pipe_1[0],buf,MAX_BUF_SIZE)-1;
  return len;
 }
 
@@ -76,36 +76,34 @@ main(int argc, char *argv[])
    }
 
   //create two pipe to share with child
-  int fd1[2], fd2[2];
-  pipe1(fd1); //a pipe from child to parent - child sends entered texts to parent for counting
-  pipe1(fd2); //a pipe from child to parent - child lets parent stop (when user types :exit)
+  int pipe_1[2], pipe_2[2];
+  pipe1(pipe_1); //a pipe from child to parent - child sends entered texts to parent for counting
+  pipe1(pipe_2); //a pipe from child to parent - child lets parent stop (when user types :exit)
 
   int result = fork1();//create child process
   if(result==0){
 
      //child process:
-     close(fd1[0]);
-     close(fd2[0]);
+     close(pipe_1[0]);
+     close(pipe_2[0]);
      int num_iter = t_time / interval;
      for (int i = 0; i < num_iter; i++) {
-         sleep(interval);
-         write(fd1[1], "Hello!", 6);//-1 because we remove the end /0 from string
+         sleep(interval / 2);
+         write(pipe_1[1], "Hello!", 6);
+         sleep(interval / 2 + interval % 2);
      }
      char ch='a';
-     write(fd2[1],&ch,1);
+     write(pipe_2[1], &ch, 1);
      exit(0);
 
   } else {
-
      //parent process:
-
      while(1) {
          sleep(60);
-
-         int len = read1(fd1);
+         int len = read1(pipe_1);
          printf("\nIn last minute, %d characters were entered.\n", len);
 
-         len = read1(fd2);
+         len = read1(pipe_2);
          if (len > 0) {
              //now to terminate
              wait(0);
